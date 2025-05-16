@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useCart } from '../store/cart';
 import { CreditCard, QrCode } from 'lucide-react';
-import { initializeRazorpay } from '../utils/razorpay';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -28,39 +27,100 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      const options = {
+      // Create order data
+      const orderData = {
         amount: Math.round(total * 100), // Amount in paise
         currency: 'INR',
-        order: {
-          items,
-          total,
-          shipping: formData,
-          status: 'pending'
+        receipt: `order_${Date.now()}`,
+        shipping: formData
+      };
+
+      // Create Razorpay order
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const { id: orderId } = await response.json();
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Ulavapadu Mangoes',
+        description: 'Mango Purchase',
+        order_id: orderId,
         prefill: {
           name: formData.name,
           email: formData.email,
           contact: formData.phone
         },
-        notes: {
-          address: formData.address,
-          shipping_address: `${formData.address}, ${formData.city}, ${formData.postalCode}`
+        handler: async function(response: any) {
+          try {
+            // Verify payment
+            const verifyResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            if (!verifyResponse.ok) {
+              throw new Error('Payment verification failed');
+            }
+
+            // Save order to local storage
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const newOrder = {
+              id: response.razorpay_payment_id,
+              items,
+              total,
+              shipping: formData,
+              status: 'completed',
+              date: new Date().toISOString(),
+              paymentId: response.razorpay_payment_id,
+              upiId: response.razorpay_payment_id
+            };
+            localStorage.setItem('orders', JSON.stringify([...orders, newOrder]));
+
+            // Dispatch order completion event
+            window.dispatchEvent(new CustomEvent('orderCompleted', { detail: newOrder }));
+
+            // Clear cart and redirect
+            clearCart();
+            toast.success('Payment successful! Order confirmed.');
+            navigate('/');
+          } catch (error) {
+            console.error('Payment verification failed:', error);
+            toast.error('Payment verification failed. Please contact support.');
+          }
+        },
+        modal: {
+          ondismiss: function() {
+            setLoading(false);
+          }
         },
         theme: {
           color: '#16a34a'
-        },
-        onSuccess: () => {
-          toast.success('Payment successful! Order confirmed.');
-          clearCart();
-          navigate('/');
-        },
-        onError: (error: string) => {
-          toast.error(error || 'Payment failed. Please try again.');
-          setLoading(false);
         }
       };
 
-      await initializeRazorpay(options);
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (error) {
       console.error('Payment initialization failed:', error);
       toast.error('Payment initialization failed. Please try again.');
