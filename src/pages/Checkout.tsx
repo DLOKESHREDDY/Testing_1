@@ -37,10 +37,11 @@ const Checkout = () => {
       };
 
       // Create Razorpay order
-      const response = await fetch('/functions/v1/razorpay', {
+      const response = await fetch('https://api.razorpay.com/v1/orders', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${btoa('rzp_live_SwdU7axxoxjgwX:xcVfMMzYhsR1Fs2dV8u62axs')}`
         },
         body: JSON.stringify(orderData)
       });
@@ -65,25 +66,10 @@ const Checkout = () => {
         },
         handler: async function(response: any) {
           try {
-            // Verify payment
-            const verifyResponse = await fetch('/functions/v1/razorpay-verify', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                shipping: formData,
-                items: items,
-                total: total
-              })
-            });
-
-            if (!verifyResponse.ok) {
-              throw new Error('Payment verification failed');
-            }
+            // Send order details to WhatsApp
+            const message = `New order received!\n\nOrder ID: ${response.razorpay_order_id}\nPayment ID: ${response.razorpay_payment_id}\nAmount: ₹${total}\n\nCustomer Details:\nName: ${formData.name}\nPhone: ${formData.phone}\nEmail: ${formData.email}\nAddress: ${formData.address}, ${formData.city} - ${formData.postalCode}\n\nItems:\n${items.map(item => `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`).join('\n')}`;
+            
+            window.open(`https://wa.me/918096497872?text=${encodeURIComponent(message)}`, '_blank');
 
             // Save order to local storage
             const orders = JSON.parse(localStorage.getItem('orders') || '[]');
@@ -99,11 +85,6 @@ const Checkout = () => {
             };
             localStorage.setItem('orders', JSON.stringify([...orders, newOrder]));
 
-            // Send WhatsApp notification
-            const message = `New order received!\n\nOrder ID: ${response.razorpay_order_id}\nPayment ID: ${response.razorpay_payment_id}\nAmount: ₹${total}\n\nCustomer Details:\nName: ${formData.name}\nPhone: ${formData.phone}\nEmail: ${formData.email}\nAddress: ${formData.address}, ${formData.city} - ${formData.postalCode}\n\nItems:\n${items.map(item => `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`).join('\n')}`;
-            
-            window.open(`https://wa.me/918096497872?text=${encodeURIComponent(message)}`, '_blank');
-
             // Dispatch order completion event
             window.dispatchEvent(new CustomEvent('orderCompleted', { detail: newOrder }));
 
@@ -112,8 +93,8 @@ const Checkout = () => {
             toast.success('Payment successful! Order confirmed.');
             navigate('/');
           } catch (error) {
-            console.error('Payment verification failed:', error);
-            toast.error('Payment verification failed. Please contact support.');
+            console.error('Order processing failed:', error);
+            toast.error('Order processing failed. Please contact support.');
           }
         },
         modal: {
