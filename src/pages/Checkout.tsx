@@ -32,7 +32,8 @@ const Checkout = () => {
         amount: Math.round(total * 100), // Amount in paise
         currency: 'INR',
         receipt: `order_${Date.now()}`,
-        shipping: formData
+        shipping: formData,
+        items: items
       };
 
       // Create Razorpay order
@@ -52,7 +53,7 @@ const Checkout = () => {
       const { id: orderId } = await response.json();
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY,
+        key: 'rzp_live_FTXmt9EmjJpyPs',
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Ulavapadu Mangoes',
@@ -75,7 +76,10 @@ const Checkout = () => {
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
+                razorpay_signature: response.razorpay_signature,
+                shipping: formData,
+                items: items,
+                total: total
               })
             });
 
@@ -93,9 +97,14 @@ const Checkout = () => {
               status: 'completed',
               date: new Date().toISOString(),
               paymentId: response.razorpay_payment_id,
-              upiId: response.razorpay_payment_id
+              orderId: response.razorpay_order_id
             };
             localStorage.setItem('orders', JSON.stringify([...orders, newOrder]));
+
+            // Send WhatsApp notification
+            const message = `New order received!\n\nOrder ID: ${response.razorpay_order_id}\nPayment ID: ${response.razorpay_payment_id}\nAmount: ₹${total}\n\nCustomer Details:\nName: ${formData.name}\nPhone: ${formData.phone}\nEmail: ${formData.email}\nAddress: ${formData.address}, ${formData.city} - ${formData.postalCode}\n\nItems:\n${items.map(item => `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`).join('\n')}`;
+            
+            window.open(`https://wa.me/918096497872?text=${encodeURIComponent(message)}`, '_blank');
 
             // Dispatch order completion event
             window.dispatchEvent(new CustomEvent('orderCompleted', { detail: newOrder }));

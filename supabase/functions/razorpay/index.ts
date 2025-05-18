@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const RAZORPAY_KEY = 'rzp_live_FTXmt9EmjJpyPs';
 const RAZORPAY_SECRET = 'Y16wxWo50Duj20slpgYX6hIi';
+const WHATSAPP_NUMBER = '918096497872';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,8 +11,23 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 };
 
+const sendWhatsAppNotification = async (orderDetails: any) => {
+  const items = orderDetails.items.map((item: any) => 
+    `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`
+  ).join('\n');
+
+  const message = `New Order Received!\n\nOrder ID: ${orderDetails.orderId}\nCustomer: ${orderDetails.shipping.name}\nPhone: ${orderDetails.shipping.phone}\nEmail: ${orderDetails.shipping.email}\nAddress: ${orderDetails.shipping.address}, ${orderDetails.shipping.city} - ${orderDetails.shipping.postalCode}\n\nItems:\n${items}\n\nTotal Amount: ₹${orderDetails.amount/100}\nPayment ID: ${orderDetails.paymentId}`;
+
+  try {
+    const response = await fetch(`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`);
+    return response.ok;
+  } catch (error) {
+    console.error('WhatsApp notification error:', error);
+    return false;
+  }
+};
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       status: 204, 
@@ -20,7 +36,7 @@ serve(async (req) => {
   }
 
   try {
-    const { amount, currency = 'INR', receipt } = await req.json();
+    const { amount, currency = 'INR', receipt, shipping, items } = await req.json();
 
     // Create Razorpay order
     const response = await fetch('https://api.razorpay.com/v1/orders', {
@@ -52,6 +68,15 @@ serve(async (req) => {
         }
       );
     }
+
+    // Store order details for verification
+    const orderDetails = {
+      orderId: data.id,
+      amount,
+      shipping,
+      items,
+      timestamp: new Date().toISOString()
+    };
 
     return new Response(
       JSON.stringify(data),
