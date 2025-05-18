@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const RAZORPAY_KEY = 'rzp_live_FTXmt9EmjJpyPs';
-const RAZORPAY_SECRET = 'Y16wxWo50Duj20slpgYX6hIi';
+const RAZORPAY_KEY = 'rzp_live_SwdU7axxoxjgwX';
+const RAZORPAY_SECRET = 'xcVfMMzYhsR1Fs2dV8u62axs';
 const WHATSAPP_NUMBER = '918096497872';
 
 const corsHeaders = {
@@ -77,6 +77,9 @@ serve(async (req) => {
       items,
       timestamp: new Date().toISOString()
     };
+
+    // Send WhatsApp notification
+    await sendWhatsAppNotification(orderDetails);
 
     return new Response(
       JSON.stringify(data),

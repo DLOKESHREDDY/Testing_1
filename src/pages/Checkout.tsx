@@ -53,7 +53,7 @@ const Checkout = () => {
       const { id: orderId } = await response.json();
 
       const options = {
-        key: 'rzp_live_FTXmt9EmjJpyPs',
+        key: 'rzp_live_SwdU7axxoxjgwX',
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Ulavapadu Mangoes',

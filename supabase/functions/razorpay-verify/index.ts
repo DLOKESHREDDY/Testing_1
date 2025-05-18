@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createHmac } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
-const RAZORPAY_SECRET = 'Y16wxWo50Duj20slpgYX6hIi';
+const RAZORPAY_SECRET = 'xcVfMMzYhsR1Fs2dV8u62axs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
