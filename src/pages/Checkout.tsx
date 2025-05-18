@@ -37,11 +37,10 @@ const Checkout = () => {
       };
 
       // Create Razorpay order
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay`, {
+      const response = await fetch('/functions/v1/razorpay', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(orderData)
       });
@@ -67,11 +66,10 @@ const Checkout = () => {
         handler: async function(response: any) {
           try {
             // Verify payment
-            const verifyResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-verify`, {
+            const verifyResponse = await fetch('/functions/v1/razorpay-verify', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
