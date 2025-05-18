@@ -36,29 +36,13 @@ const Checkout = () => {
         items: items
       };
 
-      // Create Razorpay order
-      const response = await fetch('https://api.razorpay.com/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${btoa('rzp_live_SwdU7axxoxjgwX:xcVfMMzYhsR1Fs2dV8u62axs')}`
-        },
-        body: JSON.stringify(orderData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create order');
-      }
-
-      const { id: orderId } = await response.json();
-
+      // Initialize Razorpay directly
       const options = {
         key: 'rzp_live_SwdU7axxoxjgwX',
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Ulavapadu Mangoes',
         description: 'Mango Purchase',
-        order_id: orderId,
         prefill: {
           name: formData.name,
           email: formData.email,
@@ -66,11 +50,6 @@ const Checkout = () => {
         },
         handler: async function(response: any) {
           try {
-            // Send order details to WhatsApp
-            const message = `New order received!\n\nOrder ID: ${response.razorpay_order_id}\nPayment ID: ${response.razorpay_payment_id}\nAmount: ₹${total}\n\nCustomer Details:\nName: ${formData.name}\nPhone: ${formData.phone}\nEmail: ${formData.email}\nAddress: ${formData.address}, ${formData.city} - ${formData.postalCode}\n\nItems:\n${items.map(item => `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`).join('\n')}`;
-            
-            window.open(`https://wa.me/918096497872?text=${encodeURIComponent(message)}`, '_blank');
-
             // Save order to local storage
             const orders = JSON.parse(localStorage.getItem('orders') || '[]');
             const newOrder = {
@@ -84,6 +63,10 @@ const Checkout = () => {
               orderId: response.razorpay_order_id
             };
             localStorage.setItem('orders', JSON.stringify([...orders, newOrder]));
+
+            // Send WhatsApp notification
+            const message = `New order received!\n\nOrder ID: ${response.razorpay_order_id}\nPayment ID: ${response.razorpay_payment_id}\nAmount: ₹${total}\n\nCustomer Details:\nName: ${formData.name}\nPhone: ${formData.phone}\nEmail: ${formData.email}\nAddress: ${formData.address}, ${formData.city} - ${formData.postalCode}\n\nItems:\n${items.map(item => `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`).join('\n')}`;
+            window.open(`https://wa.me/918096497872?text=${encodeURIComponent(message)}`, '_blank');
 
             // Dispatch order completion event
             window.dispatchEvent(new CustomEvent('orderCompleted', { detail: newOrder }));
