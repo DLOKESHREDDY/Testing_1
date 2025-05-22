@@ -17,6 +17,20 @@ const Checkout = () => {
     postalCode: '',
   });
 
+  const calculateDeliveryFee = () => {
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    if (totalQuantity >= 20) {
+      return 0;
+    } else if (totalQuantity <= 10) {
+      return 60;
+    } else {
+      return 0;
+    }
+  };
+
+  const deliveryFee = calculateDeliveryFee();
+  const finalTotal = total + deliveryFee;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -27,35 +41,45 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      // Create order data
       const orderData = {
-        amount: Math.round(total * 100), // Amount in paise
+        amount: Math.round(finalTotal * 100),
         currency: 'INR',
         receipt: `order_${Date.now()}`,
         shipping: formData,
-        items: items
+        items: items.map(item => ({
+          ...item,
+          subtotal: item.product.price * item.quantity
+        })),
+        deliveryFee
       };
 
-      // Initialize Razorpay directly
       const options = {
         key: 'rzp_live_SwdU7axxoxjgwX',
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Ulavapadu Mangoes',
-        description: 'Mango Purchase',
+        description: `Order - ${items.reduce((acc, item) => acc + item.quantity, 0)}kg Mangoes`,
         prefill: {
           name: formData.name,
           email: formData.email,
           contact: formData.phone
         },
+        notes: {
+          shipping_address: `${formData.address}, ${formData.city} - ${formData.postalCode}`,
+          order_items: items.map(item => 
+            `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`
+          ).join(', '),
+          delivery_fee: `₹${deliveryFee}`,
+          total_quantity: `${items.reduce((acc, item) => acc + item.quantity, 0)}kg`
+        },
         handler: async function(response: any) {
           try {
-            // Save order to local storage
             const orders = JSON.parse(localStorage.getItem('orders') || '[]');
             const newOrder = {
               id: response.razorpay_payment_id,
               items,
-              total,
+              total: finalTotal,
+              deliveryFee,
               shipping: formData,
               status: 'completed',
               date: new Date().toISOString(),
@@ -64,14 +88,11 @@ const Checkout = () => {
             };
             localStorage.setItem('orders', JSON.stringify([...orders, newOrder]));
 
-            // Send WhatsApp notification
-            const message = `New order received!\n\nOrder ID: ${response.razorpay_order_id}\nPayment ID: ${response.razorpay_payment_id}\nAmount: ₹${total}\n\nCustomer Details:\nName: ${formData.name}\nPhone: ${formData.phone}\nEmail: ${formData.email}\nAddress: ${formData.address}, ${formData.city} - ${formData.postalCode}\n\nItems:\n${items.map(item => `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`).join('\n')}`;
+            const message = `New order received!\n\nOrder ID: ${response.razorpay_order_id}\nPayment ID: ${response.razorpay_payment_id}\nAmount: ₹${finalTotal}\nDelivery Fee: ₹${deliveryFee}\n\nCustomer Details:\nName: ${formData.name}\nPhone: ${formData.phone}\nEmail: ${formData.email}\nAddress: ${formData.address}, ${formData.city} - ${formData.postalCode}\n\nItems:\n${items.map(item => `${item.product.name} - ${item.quantity}kg - ₹${item.product.price * item.quantity}`).join('\n')}\n\nTotal Quantity: ${items.reduce((acc, item) => acc + item.quantity, 0)}kg`;
             window.open(`https://wa.me/918096497872?text=${encodeURIComponent(message)}`, '_blank');
 
-            // Dispatch order completion event
             window.dispatchEvent(new CustomEvent('orderCompleted', { detail: newOrder }));
 
-            // Clear cart and redirect
             clearCart();
             toast.success('Payment successful! Order confirmed.');
             navigate('/');
@@ -203,7 +224,7 @@ const Checkout = () => {
                 <>
                   <CreditCard className="w-5 h-5" />
                   <QrCode className="w-5 h-5" />
-                  Pay ₹{total.toFixed(2)}
+                  Pay ₹{finalTotal.toFixed(2)}
                 </>
               )}
             </button>
@@ -216,15 +237,23 @@ const Checkout = () => {
             {items.map((item) => (
               <div key={item.product.id} className="flex justify-between py-2">
                 <span>
-                  {item.product.name} x {item.quantity}
+                  {item.product.name} x {item.quantity}kg
                 </span>
                 <span>₹{(item.product.price * item.quantity).toFixed(2)}</span>
               </div>
             ))}
             <div className="border-t mt-4 pt-4">
-              <div className="flex justify-between font-semibold">
-                <span>Total</span>
+              <div className="flex justify-between text-gray-600">
+                <span>Subtotal</span>
                 <span>₹{total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Delivery Fee</span>
+                <span>₹{deliveryFee.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-semibold mt-2">
+                <span>Total</span>
+                <span>₹{finalTotal.toFixed(2)}</span>
               </div>
               <p className="text-sm text-gray-500 mt-2">
                 * Prices include all applicable taxes

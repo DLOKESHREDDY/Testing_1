@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, Plus, Minus, Gift, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, Minus, Gift, AlertCircle, ShoppingBag } from 'lucide-react';
 import { useCart } from '../store/cart';
 import { toast } from 'react-hot-toast';
 
@@ -9,12 +9,13 @@ const Cart = () => {
   const navigate = useNavigate();
 
   const calculateDeliveryFee = () => {
-    if (total >= 1000 || total <= 500) {
-      return 0;
-    } else if (total > 500) {
-      return 60;
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    if (totalQuantity >= 20) {
+      return 0; // Free delivery for orders over 20kg
+    } else if (totalQuantity <= 10) {
+      return 60; // ₹60 delivery fee for orders up to 10kg
     } else {
-      return 80;
+      return 0; // Free delivery for orders between 10kg and 20kg
     }
   };
 
@@ -54,6 +55,21 @@ const Cart = () => {
   const applicableOffers = specialOffers.filter(offer => total >= offer.minAmount);
   const nextOffer = specialOffers.find(offer => total < offer.minAmount);
 
+  // Mobile Cart Button
+  const MobileCartButton = () => (
+    <Link
+      to="/cart"
+      className="fixed bottom-20 right-6 md:hidden bg-green-500 text-white p-4 rounded-full shadow-lg z-50"
+    >
+      <ShoppingBag className="w-6 h-6" />
+      {items.length > 0 && (
+        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+          {items.length}
+        </span>
+      )}
+    </Link>
+  );
+
   if (items.length === 0) {
     return (
       <div className="text-center py-16">
@@ -64,6 +80,7 @@ const Cart = () => {
         >
           Continue Shopping
         </Link>
+        <MobileCartButton />
       </div>
     );
   }
@@ -167,6 +184,7 @@ const Cart = () => {
           </div>
         </div>
       </div>
+      <MobileCartButton />
     </div>
   );
 };
