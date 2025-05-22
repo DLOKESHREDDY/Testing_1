@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { ShoppingCart, Plus, Minus, Heart, PhoneCall, Info } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Heart, PhoneCall, Info, ArrowRight } from 'lucide-react';
 import { products, reviews } from '../data/products';
 import { useCart } from '../store/cart';
 import { useWishlist } from '../store/wishlist';
+import { useNavigate } from 'react-router-dom';
 
 const Products = () => {
+  const navigate = useNavigate();
   const addToCart = useCart(state => state.addItem);
   const { addItem: addToWishlist, removeItem: removeFromWishlist, hasItem: isInWishlist } = useWishlist();
   const [quantities, setQuantities] = useState<Record<string, number>>(
@@ -78,13 +80,23 @@ const Products = () => {
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Our Mangoes</h1>
-        <button
-          onClick={handleWhatsAppOrder}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-        >
-          <PhoneCall className="w-5 h-5" />
-          Order via WhatsApp
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={() => navigate('/cart')}
+            className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            Go to Cart
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleWhatsAppOrder}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+          >
+            <PhoneCall className="w-5 h-5" />
+            Order via WhatsApp
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
@@ -142,13 +154,24 @@ const Products = () => {
                   Add 10kg
                 </button>
               </div>
-              <button
-                onClick={() => handleAddToCart(product)}
-                className="w-full flex items-center justify-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                <span>Add to Cart</span>
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleAddToCart(product)}
+                  className="flex-1 flex items-center justify-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  <span>Add to Cart</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleAddToCart(product);
+                    navigate('/cart');
+                  }}
+                  className="flex items-center justify-center space-x-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
